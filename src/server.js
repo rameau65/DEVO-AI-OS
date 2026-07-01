@@ -1,14 +1,17 @@
 #!/usr/bin/env node
 
 import http from 'http';
+import { StdioClientTransport } from '@anthropic-ai/sdk/lib/resources/messages/streaming';
 
 class DEVOAIOSMCPServer {
   constructor() {
     this.name = 'DEVO-AI-OS MCP Server';
-    this.version = '1.0.0';
+    this.version = '2.0.0';
+    this.mcpVersion = '2024-11-05';
     this.tools = this.initializeTools();
     this.resources = this.initializeResources();
     this.port = process.env.PORT || 3000;
+    this.openaiApiKey = process.env.OPENAI_API_KEY;
   }
 
   initializeTools() {
@@ -22,33 +25,37 @@ class DEVOAIOSMCPServer {
             topic: { type: 'string', description: 'Topic to convert' },
             audience: { type: 'string', description: 'Target audience' },
             duration: { type: 'string', enum: ['1min', '3min', '5min'], description: 'Story duration' },
-            tone: { type: 'string', description: 'Narrative tone' }
+            tone: { type: 'string', description: 'Narrative tone (educational, inspirational, entertaining)' }
           },
           required: ['topic', 'audience', 'duration']
         }
       },
       {
         name: 'visual_engine',
-        description: 'Convert story elements into image-generation prompts',
+        description: 'Convert story elements into image-generation prompts optimized for MidJourney or similar tools',
         inputSchema: {
           type: 'object',
           properties: {
-            concept: { type: 'string', description: 'Visual concept' },
-            style: { type: 'string', description: 'Visual style (cinematic, animation, poster)' },
-            mood: { type: 'string', description: 'Mood or atmosphere' }
+            concept: { type: 'string', description: 'Visual concept to describe' },
+            style: { type: 'string', description: 'Visual style (cinematic, animation, poster, illustration)' },
+            mood: { type: 'string', description: 'Mood or atmosphere (peaceful, dramatic, joyful, etc.)' }
           },
           required: ['concept', 'style']
         }
       },
       {
         name: 'seedance_engine',
-        description: 'Create cinematic AI video sequences',
+        description: 'Create cinematic AI video sequences for professional quality video generation',
         inputSchema: {
           type: 'object',
           properties: {
-            theme: { type: 'string', description: 'Video theme' },
-            duration: { type: 'string', description: 'Video duration' },
-            style_preset: { type: 'string', enum: ['MEDITATION_CINEMA', 'HANMAUM_DOCUMENTARY', 'AI_POETRY_FILM', 'YOUTUBE_SHORTS_CINEMA'] },
+            theme: { type: 'string', description: 'Video theme or narrative' },
+            duration: { type: 'string', description: 'Video duration (1min, 3min, 5min, 10min)' },
+            style_preset: { 
+              type: 'string', 
+              enum: ['MEDITATION_CINEMA', 'HANMAUM_DOCUMENTARY', 'AI_POETRY_FILM', 'YOUTUBE_SHORTS_CINEMA'],
+              description: 'Predefined style preset'
+            },
             music_mood: { type: 'string', description: 'Music mood or atmosphere' }
           },
           required: ['theme', 'duration']
@@ -56,53 +63,53 @@ class DEVOAIOSMCPServer {
       },
       {
         name: 'music_engine',
-        description: 'Create music and sound direction',
+        description: 'Create music and sound direction prompts for Suno and similar AI music tools',
         inputSchema: {
           type: 'object',
           properties: {
-            mood: { type: 'string', description: 'Music mood' },
+            mood: { type: 'string', description: 'Music mood (contemplative, energetic, peaceful, etc.)' },
             duration: { type: 'string', description: 'Music duration' },
-            genre: { type: 'string', description: 'Music genre' },
-            instruments: { type: 'array', items: { type: 'string' }, description: 'Instruments to use' }
+            genre: { type: 'string', description: 'Music genre (ambient, electronic, orchestral, etc.)' },
+            instruments: { type: 'array', items: { type: 'string' }, description: 'Suggested instruments' }
           },
           required: ['mood', 'duration']
         }
       },
       {
         name: 'meditation_engine',
-        description: 'Create meditation scripts and visual structures',
+        description: 'Create meditation scripts, visual structures, and accompanying materials',
         inputSchema: {
           type: 'object',
           properties: {
-            theme: { type: 'string', description: 'Meditation theme' },
-            emotion: { type: 'string', description: 'Target emotion' },
-            duration: { type: 'string', enum: ['1min', '3min', '5min', '10min'] },
-            audience: { type: 'string', description: 'Target audience' }
+            theme: { type: 'string', description: 'Meditation theme (inner peace, healing, focus, etc.)' },
+            emotion: { type: 'string', description: 'Target emotion to cultivate' },
+            duration: { type: 'string', enum: ['1min', '3min', '5min', '10min'], description: 'Meditation duration' },
+            audience: { type: 'string', description: 'Target audience (beginners, intermediate, advanced)' }
           },
           required: ['theme', 'duration']
         }
       },
       {
         name: 'quality_engine',
-        description: 'Review and improve creative outputs',
+        description: 'Review and improve creative outputs with comprehensive quality assessment',
         inputSchema: {
           type: 'object',
           properties: {
             content: { type: 'string', description: 'Content to review' },
             content_type: { type: 'string', enum: ['story', 'script', 'visual', 'video', 'music'], description: 'Type of content' },
-            target_audience: { type: 'string', description: 'Target audience' }
+            target_audience: { type: 'string', description: 'Target audience for the content' }
           },
           required: ['content', 'content_type']
         }
       },
       {
         name: 'flow_engine',
-        description: 'Design end-to-end production workflows',
+        description: 'Design end-to-end production workflows integrating all creative engines',
         inputSchema: {
           type: 'object',
           properties: {
-            project_goal: { type: 'string', description: 'Project goal' },
-            output_format: { type: 'array', items: { type: 'string' }, description: 'Desired output formats' },
+            project_goal: { type: 'string', description: 'Project goal or desired outcome' },
+            output_format: { type: 'array', items: { type: 'string' }, description: 'Desired output formats (video, audio, document, etc.)' },
             available_tools: { type: 'array', items: { type: 'string' }, description: 'Available AI tools' },
             timeline: { type: 'string', description: 'Project timeline' }
           },
@@ -121,6 +128,29 @@ class DEVOAIOSMCPServer {
       { name: 'core_principles', description: 'Core DEVO-AI-OS principles and standards', path: 'core/' },
       { name: 'agents', description: 'Agent definitions and instructions', path: 'agents/' }
     ];
+  }
+
+  // OpenAI Function definitions for ChatGPT integration
+  getOpenAITools() {
+    return this.tools.map(tool => ({
+      type: 'function',
+      function: {
+        name: tool.name,
+        description: tool.description,
+        parameters: tool.inputSchema
+      }
+    }));
+  }
+
+  // MCP Protocol compliant response
+  getMCPToolResponse() {
+    return {
+      tools: this.tools.map(tool => ({
+        name: tool.name,
+        description: tool.description,
+        inputSchema: tool.inputSchema
+      }))
+    };
   }
 
   async handleToolCall(toolName, toolInput) {
@@ -158,7 +188,8 @@ class DEVOAIOSMCPServer {
         logline: `One-line summary about ${input.topic}`,
         structure: `${input.duration} narrative structure`,
         scene_list: ['Scene 1: Setup', 'Scene 2: Development', 'Scene 3: Resolution'],
-        storyboard_template: 'Ready for visual elements'
+        storyboard_template: 'Ready for visual elements',
+        narration_tips: 'Maintain consistent tone and pacing'
       }
     };
   }
@@ -172,8 +203,9 @@ class DEVOAIOSMCPServer {
       output: {
         master_prompt: `${input.concept} in ${input.style} style, mood: ${input.mood}`,
         parameters: '--ar 16:9 --stylize 250 --v 8.1',
-        negative_constraints: 'text artifacts, distorted hands, extra limbs',
-        shot_list: ['Wide shot', 'Medium shot', 'Close-up']
+        negative_constraints: 'text artifacts, distorted hands, extra limbs, blurry',
+        shot_list: ['Wide shot establishing scene', 'Medium shot for detail', 'Close-up for emotion'],
+        color_palette: 'To be determined based on mood'
       }
     };
   }
@@ -185,11 +217,12 @@ class DEVOAIOSMCPServer {
       duration: input.duration,
       style_preset: input.style_preset || 'MEDITATION_CINEMA',
       output: {
-        scene_breakdown: 'Scene structure prepared',
+        scene_breakdown: 'Scene structure with emotional beats prepared',
         camera_motion_plan: 'Smooth cinematic movements with emotional pacing',
-        transition_strategy: 'Natural transitions between scenes',
-        color_script: 'Color palette defined based on mood',
-        music_sync_notes: `Synchronized with ${input.music_mood || 'ambient'} music`
+        transition_strategy: 'Natural dissolves and fades between scenes',
+        color_script: 'Color palette defined based on mood and emotion',
+        music_sync_notes: `Synchronized with ${input.music_mood || 'ambient'} music`,
+        production_notes: 'Ready for Seedance/Hailuo/Kling video generation'
       }
     };
   }
@@ -202,9 +235,10 @@ class DEVOAIOSMCPServer {
       genre: input.genre || 'ambient',
       output: {
         base_prompt: `${input.mood} ${input.genre} music for ${input.duration}`,
-        versions: ['30-second', '1-minute', '3-minute', '5-minute'],
+        versions: ['30-second trailer', '1-minute theme', '3-minute extended', '5-minute full composition'],
         instruments: input.instruments || ['synth pads', 'ambient strings', 'subtle percussion'],
-        parameters: 'Instrumental, no vocals, no heavy drums, loop-friendly, emotional depth'
+        parameters: 'Instrumental, no vocals, no heavy drums, loop-friendly, emotional depth',
+        suno_prompt: `Create ${input.mood} ${input.genre} music, ${input.duration} duration. No lyrics. ${(input.instruments || []).join(', ')}`
       }
     };
   }
@@ -217,11 +251,12 @@ class DEVOAIOSMCPServer {
       duration: input.duration,
       audience: input.audience,
       output: {
-        meditation_script: `${input.duration} guided meditation on ${input.theme}`,
-        structure: ['Arrival & grounding', 'Breathing practice', 'Observation', 'Letting go', 'Inner awareness', 'Return to daily life'],
+        meditation_script: `${input.duration} guided meditation on ${input.theme} for ${input.audience}`,
+        structure: ['Arrival & grounding', 'Breathing practice', 'Body observation', 'Letting go', 'Inner awareness', 'Return to daily life'],
         visual_prompts: 'Key meditation scenes identified',
-        music_prompt: 'Calm, spacious ambient music supporting emotional journey',
-        narration_tone: 'Gentle, guiding, compassionate'
+        music_prompt: `${input.mood || 'calm'}, spacious ambient music supporting emotional journey`,
+        narration_tone: 'Gentle, guiding, compassionate',
+        pacing_guide: 'Slow, meditative pacing with intentional pauses'
       }
     };
   }
@@ -236,10 +271,10 @@ class DEVOAIOSMCPServer {
         emotional_consistency: 'Strong emotional arc',
         visual_feasibility: 'High - production ready',
         tool_readiness: 'Production-ready for AI tools',
-        strengths: ['Clear structure', 'Strong emotional arc', 'Tool-agnostic design'],
-        problems: ['Minor refinements suggested'],
-        revision_strategy: 'Polish and enhance details',
-        improved_version: 'Enhanced version prepared'
+        strengths: ['Clear structure', 'Strong emotional arc', 'Tool-agnostic design', 'Professional quality'],
+        suggestions: ['Minor refinements in pacing', 'Enhanced descriptive details'],
+        revision_strategy: 'Polish and enhance specific details for maximum impact',
+        production_readiness: 'Ready for immediate production'
       }
     };
   }
@@ -260,7 +295,8 @@ class DEVOAIOSMCPServer {
         timeline: input.timeline || 'Standard production',
         available_tools: input.available_tools || ['MidJourney', 'Seedance', 'Suno', 'ChatGPT'],
         total_timeline: '7-10 days',
-        quality_checkpoints: 5
+        quality_checkpoints: 5,
+        deliverables: input.output_format || ['Complete video', 'Audio composition', 'Supporting documents']
       }
     };
   }
@@ -278,10 +314,11 @@ class DEVOAIOSMCPServer {
 const server = new DEVOAIOSMCPServer();
 
 const requestListener = async (req, res) => {
+  // CORS headers
   res.setHeader('Content-Type', 'application/json');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
   if (req.method === 'OPTIONS') {
     res.writeHead(200);
@@ -299,6 +336,7 @@ const requestListener = async (req, res) => {
       status: 'healthy',
       server: server.name,
       version: server.version,
+      mcp_version: server.mcpVersion,
       timestamp: new Date().toISOString()
     }));
     return;
@@ -310,25 +348,26 @@ const requestListener = async (req, res) => {
     res.end(JSON.stringify({
       name: server.name,
       version: server.version,
-      description: 'Model Context Protocol implementation for DEVO-AI-OS',
+      mcp_version: server.mcpVersion,
+      description: 'Model Context Protocol implementation for DEVO-AI-OS with OpenAI integration',
       tools: server.getToolDefinitions().map(t => ({ name: t.name, description: t.description })),
       resources: server.getResourceDefinitions().map(r => ({ name: r.name, description: r.description })),
       endpoints: {
         health: '/health',
         tools: '/tools',
         resources: '/resources',
-        call: '/call'
+        call: '/call',
+        mcp: '/mcp',
+        openai: '/openai'
       }
     }));
     return;
   }
 
-  // List tools endpoint
+  // List tools endpoint (MCP compliant)
   if (pathname === '/tools' && req.method === 'GET') {
     res.writeHead(200);
-    res.end(JSON.stringify({
-      tools: server.getToolDefinitions()
-    }));
+    res.end(JSON.stringify(server.getMCPToolResponse()));
     return;
   }
 
@@ -338,6 +377,68 @@ const requestListener = async (req, res) => {
     res.end(JSON.stringify({
       resources: server.getResourceDefinitions()
     }));
+    return;
+  }
+
+  // MCP Protocol endpoint (for Claude/MCP clients)
+  if (pathname === '/mcp' && req.method === 'GET') {
+    res.writeHead(200);
+    res.end(JSON.stringify({
+      type: 'tools/list',
+      ...server.getMCPToolResponse()
+    }));
+    return;
+  }
+
+  // OpenAI Tools endpoint (for ChatGPT integration)
+  if (pathname === '/openai' && req.method === 'GET') {
+    res.writeHead(200);
+    res.end(JSON.stringify({
+      tools: server.getOpenAITools(),
+      description: 'Tools formatted for OpenAI function calling'
+    }));
+    return;
+  }
+
+  // OpenAI ChatGPT endpoint
+  if (pathname === '/openai/chat' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => {
+      body += chunk.toString();
+    });
+    req.on('end', async () => {
+      try {
+        const data = JSON.parse(body);
+        const { messages, model = 'gpt-4' } = data;
+
+        // Call OpenAI API with our tools
+        const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${server.openaiApiKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model: model,
+            messages: messages,
+            tools: server.getOpenAITools(),
+            tool_choice: 'auto'
+          })
+        });
+
+        if (!openaiResponse.ok) {
+          throw new Error(`OpenAI API error: ${openaiResponse.statusText}`);
+        }
+
+        const result = await openaiResponse.json();
+        res.writeHead(200);
+        res.end(JSON.stringify(result));
+      } catch (error) {
+        console.error('OpenAI Chat Error:', error);
+        res.writeHead(400);
+        res.end(JSON.stringify({ error: error.message }));
+      }
+    });
     return;
   }
 
@@ -370,25 +471,30 @@ const requestListener = async (req, res) => {
 const httpServer = http.createServer(requestListener);
 
 httpServer.listen(server.port, () => {
-  console.log(`\n${'='.repeat(50)}`);
+  console.log(`\n${'='.repeat(60)}`);
   console.log(`[${server.name}] v${server.version}`);
-  console.log(`${'='.repeat(50)}`);
+  console.log(`MCP Protocol Version: ${server.mcpVersion}`);
+  console.log(`${'='.repeat(60)}`);
   console.log(`\n✅ Server running on: http://localhost:${server.port}`);
   console.log(`\n📋 Available Endpoints:`);
-  console.log(`  GET  / - Server info`);
+  console.log(`  GET  / - Server info & endpoints`);
   console.log(`  GET  /health - Health check`);
-  console.log(`  GET  /tools - List all tools`);
+  console.log(`  GET  /tools - List all tools (MCP format)`);
   console.log(`  GET  /resources - List all resources`);
-  console.log(`  POST /call - Call a tool\n`);
-  console.log(`🔧 Available Tools:`);
+  console.log(`  GET  /mcp - MCP protocol endpoint`);
+  console.log(`  GET  /openai - OpenAI tools format`);
+  console.log(`  POST /call - Call a tool directly`);
+  console.log(`  POST /openai/chat - ChatGPT integration\n`);
+  console.log(`🔧 Available Tools (${server.tools.length}):`);
   server.getToolDefinitions().forEach(tool => {
-    console.log(`  - ${tool.name}: ${tool.description}`);
+    console.log(`  ✓ ${tool.name}: ${tool.description}`);
   });
-  console.log(`\n📦 Available Resources:`);
+  console.log(`\n📦 Available Resources (${server.resources.length}):`);
   server.getResourceDefinitions().forEach(resource => {
-    console.log(`  - ${resource.name}: ${resource.description}`);
+    console.log(`  ✓ ${resource.name}: ${resource.description}`);
   });
-  console.log(`\n${'='.repeat(50)}\n`);
+  console.log(`\n🔐 OpenAI Integration: ${server.openaiApiKey ? '✅ Enabled' : '⚠️  Disabled (set OPENAI_API_KEY)'}`);
+  console.log(`\n${'='.repeat(60)}\n`);
 });
 
 export default httpServer;
