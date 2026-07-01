@@ -1,32 +1,5 @@
-# Ignore dependencies as npm will install them
 node_modules
-
-# Logs
-npm-debug.log*
-logs
-*.log
-
-# OS Files
-.DS_Store
-Thumbs.db
-
-# IDE
-.vscode
-.idea
-*.swp
-*.swo
-
-# Environment
+.next
 .env
 .env.local
-
-# Build artifacts
-dist
-build
-
-# Testing
-coverage
-.nyc_output
-
-# Vercel
 .vercel

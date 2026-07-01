@@ -1,37 +1,21 @@
 {
-  "name": "devo-ai-os-mcp",
-  "version": "2.0.0",
-  "description": "DEVO-AI-OS MCP Server with OpenAI ChatGPT Integration - Model Context Protocol implementation for creative AI workflows",
-  "main": "src/server.js",
-  "type": "module",
+  "name": "devo-ai-os",
+  "version": "1.0.0",
+  "private": true,
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "node --watch src/server.js",
-    "test": "node --test tests/**/*.test.js",
-    "client": "node src/mcp-client.js",
-    "build": "echo 'No build step required for Node.js MCP server'"
-  },
-  "keywords": [
-    "mcp",
-    "model-context-protocol",
-    "ai",
-    "creative",
-    "workflow",
-    "devo-ai-os",
-    "chatgpt",
-    "openai",
-    "function-calling"
-  ],
-  "author": "rameau65",
-  "license": "MIT",
-  "engines": {
-    "node": ">=18.0.0"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.24.0",
-    "node-fetch": "^3.3.0"
+    "next": "latest",
+    "react": "latest",
+    "react-dom": "latest"
   },
   "devDependencies": {
-    "eslint": "^8.0.0"
+    "typescript": "latest",
+    "@types/node": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest"
   }
 }
