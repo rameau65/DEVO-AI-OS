@@ -1,8 +1,8 @@
 {
   "name": "devo-ai-os",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
-  "description": "DEVO-AI-OS: AI Creative Operating System for story, visual, video, music, education, Canva and GitHub workflows.",
+  "description": "DEVO-AI-OS v1.1: Creative OS with GitHub automation, Vercel deployment trigger, Canva Agent, OpenAI API, MCP endpoint, Workflow Router and Agent Memory.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -12,6 +12,7 @@
   "dependencies": {
     "@octokit/rest": "latest",
     "next": "latest",
+    "openai": "latest",
     "react": "latest",
     "react-dom": "latest"
   },

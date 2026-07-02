@@ -1,5 +1,5 @@
 export const metadata = {
-  title: "DEVO-AI-OS v1.0",
+  title: "DEVO-AI-OS v1.1",
   description: "AI Creative Operating System"
 };
 

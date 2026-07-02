@@ -15,13 +15,7 @@ export async function POST(req: NextRequest) {
     });
 
     const result = await workflowRes.json();
-
-    return NextResponse.json({
-      ok: true,
-      intent,
-      engines,
-      result,
-    });
+    return NextResponse.json({ ok: true, intent, engines, result });
   } catch (error: any) {
     return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
   }

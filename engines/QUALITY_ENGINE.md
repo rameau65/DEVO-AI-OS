@@ -1,12 +1,3 @@
 # QUALITY_ENGINE
 
-Review outputs for:
-
-- Clarity
-- Accuracy
-- Narrative coherence
-- Visual consistency
-- Educational value
-- Reusability
-- Accessibility
-- Publication readiness
+Checks clarity, consistency, educational value, deployment safety.

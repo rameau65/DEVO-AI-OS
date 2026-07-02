@@ -1,28 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  getGitHubConfig,
-  getOctokit,
-  requireApiSecret,
-  encodeBase64,
-  decodeBase64
-} from "@/lib/github";
+import { getGitHubConfig, getOctokit, encodeBase64, decodeBase64 } from "@/lib/github";
+import { requireSecret } from "@/lib/security";
 
 export async function GET(req: NextRequest) {
   try {
-    requireApiSecret(req, "GITHUB_API_SECRET");
+    requireSecret(req, "GITHUB_API_SECRET");
     return NextResponse.json({
       ok: true,
       message: "DEVO-AI-OS GitHub API is running.",
-      actions: [
-        "repo_info",
-        "list_files",
-        "read_file",
-        "create_branch",
-        "write_file",
-        "delete_file",
-        "create_pr",
-        "refactor_commit_pr"
-      ]
+      actions: ["repo_info", "list_files", "read_file", "create_branch", "write_file", "delete_file", "create_pr", "refactor_commit_pr"]
     });
   } catch (error: any) {
     return NextResponse.json({ ok: false, error: error.message }, { status: 401 });
@@ -31,7 +17,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    requireApiSecret(req, "GITHUB_API_SECRET");
+    requireSecret(req, "GITHUB_API_SECRET");
 
     const octokit = getOctokit();
     const config = getGitHubConfig();
@@ -45,15 +31,7 @@ export async function POST(req: NextRequest) {
 
     if (action === "repo_info") {
       const { data } = await octokit.repos.get({ owner, repo });
-      return NextResponse.json({
-        ok: true,
-        repo: {
-          full_name: data.full_name,
-          default_branch: data.default_branch,
-          private: data.private,
-          html_url: data.html_url
-        }
-      });
+      return NextResponse.json({ ok: true, repo: { full_name: data.full_name, default_branch: data.default_branch, private: data.private, html_url: data.html_url } });
     }
 
     if (action === "list_files") {
@@ -65,17 +43,9 @@ export async function POST(req: NextRequest) {
     if (action === "read_file") {
       const path = body.path;
       if (!path) throw new Error("Missing path.");
-
       const { data } = await octokit.repos.getContent({ owner, repo, path, ref: branch });
       if (Array.isArray(data) || data.type !== "file") throw new Error("Path is not a file.");
-
-      return NextResponse.json({
-        ok: true,
-        path,
-        branch,
-        sha: data.sha,
-        content: decodeBase64(data.content || "")
-      });
+      return NextResponse.json({ ok: true, path, branch, sha: data.sha, content: decodeBase64(data.content || "") });
     }
 
     if (action === "create_branch") {
@@ -83,19 +53,8 @@ export async function POST(req: NextRequest) {
       const baseBranch = body.baseBranch || defaultBranch;
       if (!newBranch) throw new Error("Missing newBranch.");
 
-      const { data: baseRef } = await octokit.git.getRef({
-        owner,
-        repo,
-        ref: `heads/${baseBranch}`
-      });
-
-      const { data } = await octokit.git.createRef({
-        owner,
-        repo,
-        ref: `refs/heads/${newBranch}`,
-        sha: baseRef.object.sha
-      });
-
+      const { data: baseRef } = await octokit.git.getRef({ owner, repo, ref: `heads/${baseBranch}` });
+      const { data } = await octokit.git.createRef({ owner, repo, ref: `refs/heads/${newBranch}`, sha: baseRef.object.sha });
       return NextResponse.json({ ok: true, action, branch: newBranch, baseBranch, data });
     }
 
@@ -107,7 +66,6 @@ export async function POST(req: NextRequest) {
       if (typeof content !== "string") throw new Error("Missing content.");
 
       let sha: string | undefined;
-
       try {
         const { data: existing } = await octokit.repos.getContent({ owner, repo, path, ref: branch });
         if (!Array.isArray(existing) && existing.type === "file") sha = existing.sha;
@@ -116,15 +74,8 @@ export async function POST(req: NextRequest) {
       }
 
       const { data } = await octokit.repos.createOrUpdateFileContents({
-        owner,
-        repo,
-        path,
-        message,
-        content: encodeBase64(content),
-        branch,
-        sha
+        owner, repo, path, message, content: encodeBase64(content), branch, sha
       });
-
       return NextResponse.json({ ok: true, action, path, branch, commit: data.commit, content: data.content });
     }
 
@@ -136,15 +87,7 @@ export async function POST(req: NextRequest) {
       const { data: existing } = await octokit.repos.getContent({ owner, repo, path, ref: branch });
       if (Array.isArray(existing) || existing.type !== "file") throw new Error("Path is not a file.");
 
-      const { data } = await octokit.repos.deleteFile({
-        owner,
-        repo,
-        path,
-        message,
-        sha: existing.sha,
-        branch
-      });
-
+      const { data } = await octokit.repos.deleteFile({ owner, repo, path, message, sha: existing.sha, branch });
       return NextResponse.json({ ok: true, action, path, branch, commit: data.commit });
     }
 
@@ -156,17 +99,7 @@ export async function POST(req: NextRequest) {
       if (!title) throw new Error("Missing title.");
 
       const { data } = await octokit.pulls.create({ owner, repo, title, head, base, body: prBody });
-
-      return NextResponse.json({
-        ok: true,
-        action,
-        pull_request: {
-          number: data.number,
-          title: data.title,
-          html_url: data.html_url,
-          state: data.state
-        }
-      });
+      return NextResponse.json({ ok: true, action, pull_request: { number: data.number, title: data.title, html_url: data.html_url, state: data.state } });
     }
 
     if (action === "refactor_commit_pr") {
@@ -176,17 +109,13 @@ export async function POST(req: NextRequest) {
       const files = body.files || [];
       const prTitle = body.prTitle || `DEVO-AI-OS: ${taskName}`;
       const prBody = body.prBody || "Automated DEVO-AI-OS update.";
+      const triggerDeploy = body.triggerDeploy === true;
 
       if (!Array.isArray(files) || files.length === 0) throw new Error("Missing files array.");
 
       try {
         const { data: baseRef } = await octokit.git.getRef({ owner, repo, ref: `heads/${baseBranch}` });
-        await octokit.git.createRef({
-          owner,
-          repo,
-          ref: `refs/heads/${newBranch}`,
-          sha: baseRef.object.sha
-        });
+        await octokit.git.createRef({ owner, repo, ref: `refs/heads/${newBranch}`, sha: baseRef.object.sha });
       } catch (error: any) {
         if (!String(error.message).includes("Reference already exists")) throw error;
       }
@@ -207,26 +136,18 @@ export async function POST(req: NextRequest) {
         }
 
         const { data } = await octokit.repos.createOrUpdateFileContents({
-          owner,
-          repo,
-          path,
-          message,
-          content: encodeBase64(content),
-          branch: newBranch,
-          sha
+          owner, repo, path, message, content: encodeBase64(content), branch: newBranch, sha
         });
-
         commits.push({ path, commitSha: data.commit.sha, html_url: data.commit.html_url });
       }
 
-      const { data: pr } = await octokit.pulls.create({
-        owner,
-        repo,
-        title: prTitle,
-        head: newBranch,
-        base: baseBranch,
-        body: prBody
-      });
+      const { data: pr } = await octokit.pulls.create({ owner, repo, title: prTitle, head: newBranch, base: baseBranch, body: prBody });
+
+      let deploy: any = null;
+      if (triggerDeploy && process.env.VERCEL_DEPLOY_HOOK_URL) {
+        const deployRes = await fetch(process.env.VERCEL_DEPLOY_HOOK_URL, { method: "POST" });
+        deploy = { ok: deployRes.ok, status: deployRes.status, message: await deployRes.text() };
+      }
 
       return NextResponse.json({
         ok: true,
@@ -234,12 +155,8 @@ export async function POST(req: NextRequest) {
         branch: newBranch,
         baseBranch,
         commits,
-        pull_request: {
-          number: pr.number,
-          title: pr.title,
-          html_url: pr.html_url,
-          state: pr.state
-        }
+        pull_request: { number: pr.number, title: pr.title, html_url: pr.html_url, state: pr.state },
+        deploy
       });
     }
 

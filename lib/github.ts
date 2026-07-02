@@ -14,19 +14,6 @@ export function getOctokit() {
   return new Octokit({ auth: token });
 }
 
-export function requireApiSecret(req: Request, envName = "GITHUB_API_SECRET") {
-  const requiredSecret = process.env[envName];
-  if (!requiredSecret) return;
-
-  const secret =
-    req.headers.get("x-devo-secret") ||
-    req.headers.get("authorization")?.replace("Bearer ", "");
-
-  if (secret !== requiredSecret) {
-    throw new Error("Unauthorized: missing or invalid API secret.");
-  }
-}
-
 export function encodeBase64(content: string) {
   return Buffer.from(content, "utf-8").toString("base64");
 }
