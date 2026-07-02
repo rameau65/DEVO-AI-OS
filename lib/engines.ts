@@ -1,4 +1,7 @@
+import { runOneMindEngine } from "@/lib/onemind";
+
 export type EngineName =
+  | "onemind_engine"
   | "story_engine"
   | "visual_engine"
   | "video_engine"
@@ -21,6 +24,7 @@ export type EngineName =
 
 export function detectIntent(input: string) {
   const text = (input || "").toLowerCase();
+  if (text.includes("onemind") || text.includes("one mind") || text.includes("원마인드") || text.includes("전체 워크플로")) return "onemind";
   if (text.includes("github") || text.includes("commit") || text.includes("pr") || text.includes("pull request")) return "github";
   if (text.includes("vercel") || text.includes("deploy") || text.includes("배포")) return "vercel";
   if (text.includes("mcp")) return "mcp";
@@ -35,63 +39,60 @@ export function detectIntent(input: string) {
   if (text.includes("infographic") || text.includes("인포그래픽")) return "infographic";
   if (text.includes("education") || text.includes("교육") || text.includes("강의")) return "education";
   if (text.includes("image") || text.includes("midjourney") || text.includes("visual") || text.includes("이미지")) return "visual";
-  return "workflow";
+  return "onemind";
 }
 
 export const engineRoutes: Record<string, EngineName[]> = {
+  onemind: ["onemind_engine", "quality_engine"],
   github: ["github_engine", "quality_engine"],
   vercel: ["vercel_engine", "quality_engine"],
   mcp: ["mcp_engine", "quality_engine"],
   memory: ["memory_engine", "quality_engine"],
-  canva: ["story_engine", "visual_engine", "infographic_engine", "canva_engine", "quality_engine"],
-  youtube: ["story_engine", "visual_engine", "video_engine", "music_engine", "channel_engine", "quality_engine"],
-  brand: ["story_engine", "visual_engine", "brand_engine", "marketing_engine", "canva_engine", "quality_engine"],
-  documentary: ["story_engine", "documentary_engine", "visual_engine", "video_engine", "music_engine", "quality_engine"],
-  video: ["story_engine", "visual_engine", "seedance_engine", "music_engine", "quality_engine"],
+  canva: ["onemind_engine", "canva_engine", "quality_engine"],
+  youtube: ["onemind_engine", "story_engine", "visual_engine", "video_engine", "music_engine", "channel_engine", "quality_engine"],
+  brand: ["onemind_engine", "story_engine", "visual_engine", "brand_engine", "marketing_engine", "canva_engine", "quality_engine"],
+  documentary: ["onemind_engine", "story_engine", "documentary_engine", "visual_engine", "video_engine", "music_engine", "quality_engine"],
+  video: ["onemind_engine", "story_engine", "visual_engine", "seedance_engine", "music_engine", "quality_engine"],
   music: ["music_engine", "quality_engine"],
   meditation: ["meditation_engine", "music_engine", "quality_engine"],
-  infographic: ["story_engine", "infographic_engine", "canva_engine", "quality_engine"],
-  education: ["story_engine", "education_engine", "infographic_engine", "canva_engine", "quality_engine"],
-  visual: ["story_engine", "visual_engine", "quality_engine"],
-  workflow: ["flow_engine", "story_engine", "visual_engine", "canva_engine", "quality_engine"],
+  infographic: ["onemind_engine", "infographic_engine", "canva_engine", "quality_engine"],
+  education: ["onemind_engine", "education_engine", "infographic_engine", "canva_engine", "quality_engine"],
+  visual: ["onemind_engine", "visual_engine", "quality_engine"],
+  workflow: ["onemind_engine", "flow_engine", "quality_engine"],
 };
 
 export function runEngine(engine: EngineName, input: string, options: any = {}) {
   switch (engine) {
+    case "onemind_engine":
+      return { engine, output: runOneMindEngine(input, options) };
     case "story_engine":
-      return { engine, output: { core_message: `핵심 메시지: ${input}`, summary: `${input}을 이해 가능한 이야기로 변환합니다.`, structure: ["Question", "Conflict", "Discovery", "Transformation", "Insight"] } };
+      return { engine, output: { core_message: `핵심 메시지: ${input}`, structure: ["Question", "Conflict", "Discovery", "Transformation", "Insight"] } };
     case "visual_engine":
-      return { engine, output: { strategy: "상징적 이미지, 명확한 시각 계층, 교육적 구도", midjourney_prompt: `Cinematic educational visual about "${input}", modern minimal design, symbolic composition, clear hierarchy, elegant lighting, 16:9` } };
+      return { engine, output: { midjourney_prompt: `Cinematic educational visual about "${input}", symbolic composition, clear hierarchy, 16:9` } };
     case "video_engine":
     case "seedance_engine":
-      return { engine, output: { structure: ["Hook", "Context", "Build", "Peak", "Resolution", "CTA"], video_prompt: `Create a cinematic educational video about "${input}". Slow camera movement, documentary tone, clear transitions, 16:9.` } };
+      return { engine, output: { video_prompt: `Cinematic knowledge-design video about "${input}", documentary tone, clean transitions.` } };
     case "music_engine":
-      return { engine, output: { suno_prompt: `Ambient cinematic educational soundtrack for "${input}". Warm piano, soft strings, reflective and hopeful mood.` } };
+      return { engine, output: { suno_prompt: `Ambient cinematic soundtrack for "${input}", warm piano, soft strings, hopeful mood.` } };
     case "meditation_engine":
       return { engine, output: { meditation_structure: ["Breath", "Awareness", "Inner Scene", "Release", "Integration"] } };
     case "infographic_engine":
-      return { engine, output: { layout: ["Title", "Core Problem", "3 Key Concepts", "Process Map", "Insight Box", "Action Step"] } };
+      return { engine, output: { layout: ["Title", "Core Problem", "Knowledge Map", "Process Flow", "Insight", "Action"] } };
     case "education_engine":
-      return { engine, output: { learning_flow: ["Learn", "Understand", "Apply", "Create", "Teach"], materials: ["slides", "worksheet", "teacher guide"] } };
-    case "brand_engine":
-      return { engine, output: { mission: `${input}의 본질을 명확한 브랜드 메시지로 전환`, personality: ["clear", "creative", "educational"] } };
-    case "channel_engine":
-      return { engine, output: { youtube_package: { formats: ["Long-form", "Shorts", "Thumbnail system"], episode_structure: ["Hook", "Story", "Visual Insight", "Takeaway"] } } };
-    case "documentary_engine":
-      return { engine, output: { documentary_structure: ["Opening Image", "Question", "Evidence", "Human Story", "Turning Point", "Insight", "Ending Image"] } };
+      return { engine, output: { learning_flow: ["Learn", "Understand", "Apply", "Create", "Teach"] } };
     case "canva_engine":
-      return { engine, output: { design_brief: { project: input, audience: options.audience || "General audience", objective: "Transform knowledge into clear visual communication", style: "Modern, minimal, educational, cinematic", ratio: "16:9" }, canva_ai_prompt: `Create a modern educational Canva presentation about "${input}". Use clean sans-serif typography, clear visual hierarchy, simple icons, diagrams, minimal text, calm professional design, 16:9 ratio.`, asset_list: ["title slide", "icons", "timeline", "diagram", "summary card", "CTA slide"] } };
+      return { engine, output: { canva_ai_prompt: `Create a modern educational Canva presentation about "${input}". Clear hierarchy, simple icons, diagrams, minimal text, 16:9.` } };
     case "github_engine":
       return { engine, output: { api: "/api/github", actions: ["read_file", "write_file", "create_branch", "create_pr", "refactor_commit_pr"] } };
     case "vercel_engine":
       return { engine, output: { api: "/api/vercel", actions: ["trigger_deploy"] } };
     case "mcp_engine":
-      return { engine, output: { api: "/api/mcp", note: "Basic MCP-compatible endpoint for tool discovery and calls." } };
+      return { engine, output: { api: "/api/mcp", tools: ["devo_router", "devo_onemind", "devo_canva", "devo_memory"] } };
     case "memory_engine":
-      return { engine, output: { api: "/api/memory", actions: ["remember", "recall", "list", "clear"] } };
+      return { engine, output: { api: "/api/memory", actions: ["remember", "recall", "clear"] } };
     case "quality_engine":
-      return { engine, output: { checklist: { clarity: true, narrative_coherence: true, visual_consistency: true, educational_value: true, github_safety: true, deploy_readiness: true, reusable_output: true }, recommendation: "Ready for next production step." } };
+      return { engine, output: { checklist: { clarity: true, coherence: true, educational_value: true, reusability: true, publication_ready: true } } };
     default:
-      return { engine, output: { workflow: "Complete DEVO-AI-OS workflow initialized.", formula: "Complex Knowledge → Story → Image → Experience → Change" } };
+      return { engine, output: { workflow: "DEVO-AI-OS workflow initialized." } };
   }
 }

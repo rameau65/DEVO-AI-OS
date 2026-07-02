@@ -4,9 +4,10 @@ export async function GET() {
   return NextResponse.json({
     ok: true,
     service: "DEVO-AI-OS",
-    version: "1.1",
+    version: "2.0",
     status: "healthy",
     features: [
+      "OneMind Engine",
       "GitHub auto commit",
       "GitHub PR creation",
       "Vercel deploy hook",

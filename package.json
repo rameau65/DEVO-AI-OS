@@ -1,8 +1,8 @@
 {
   "name": "devo-ai-os",
-  "version": "1.1.0",
+  "version": "2.0.0",
   "private": true,
-  "description": "DEVO-AI-OS v1.1: Creative OS with GitHub automation, Vercel deployment trigger, Canva Agent, OpenAI API, MCP endpoint, Workflow Router and Agent Memory.",
+  "description": "DEVO-AI-OS v2.0 with OneMind Engine integration.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

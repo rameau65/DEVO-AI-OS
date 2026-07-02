@@ -6,12 +6,12 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const input = body.input || body.message || body.topic || "";
     const intent = body.intent || detectIntent(input);
-    const engines = body.engines || engineRoutes[intent] || engineRoutes.workflow;
+    const engines = body.engines || engineRoutes[intent] || engineRoutes.onemind;
 
     const workflowRes = await fetch(new URL("/api/workflows", req.url), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...body, input, intent, engines }),
+      body: JSON.stringify({ ...body, input, intent, engines })
     });
 
     const result = await workflowRes.json();

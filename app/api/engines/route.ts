@@ -5,6 +5,7 @@ export async function GET() {
   return NextResponse.json({
     ok: true,
     engines: [
+      "onemind_engine",
       "story_engine",
       "visual_engine",
       "video_engine",
@@ -13,16 +14,11 @@ export async function GET() {
       "meditation_engine",
       "infographic_engine",
       "education_engine",
-      "brand_engine",
-      "marketing_engine",
-      "channel_engine",
-      "documentary_engine",
       "canva_engine",
       "github_engine",
       "vercel_engine",
       "mcp_engine",
       "memory_engine",
-      "flow_engine",
       "quality_engine"
     ]
   });

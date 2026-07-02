@@ -5,24 +5,15 @@ type MemoryItem = {
   createdAt: string;
 };
 
-const globalForMemory = globalThis as unknown as {
-  devoMemory?: MemoryItem[];
-};
+const globalForMemory = globalThis as unknown as { devoMemory?: MemoryItem[] };
 
 export function getMemoryStore() {
-  if (!globalForMemory.devoMemory) {
-    globalForMemory.devoMemory = [];
-  }
+  if (!globalForMemory.devoMemory) globalForMemory.devoMemory = [];
   return globalForMemory.devoMemory;
 }
 
 export function remember(key: string, value: any) {
-  const item = {
-    id: crypto.randomUUID(),
-    key,
-    value,
-    createdAt: new Date().toISOString(),
-  };
+  const item = { id: crypto.randomUUID(), key, value, createdAt: new Date().toISOString() };
   getMemoryStore().push(item);
   return item;
 }

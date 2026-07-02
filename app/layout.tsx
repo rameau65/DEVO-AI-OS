@@ -1,6 +1,6 @@
 export const metadata = {
-  title: "DEVO-AI-OS v1.1",
-  description: "AI Creative Operating System"
+  title: "DEVO-AI-OS v2.0",
+  description: "DEVO-AI-OS with OneMind Engine"
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
