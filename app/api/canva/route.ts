@@ -1,23 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
+import { runEngine } from "@/lib/engines";
 
 export async function GET() {
-  return NextResponse.json({ ok: true, message: "DEVO-AI-OS Canva API is running." });
+  return NextResponse.json({ ok: true, message: "DEVO-AI-OS Canva Agent API is running." });
 }
 
 export async function POST(req: NextRequest) {
-  const body = await req.json();
-  const topic = body.topic || body.input || "Untitled Project";
+  try {
+    const body = await req.json();
+    const input = body.input || body.topic || "Untitled Project";
+    const canva = runEngine("canva_engine", input, body.options || {});
 
-  return NextResponse.json({
-    ok: true,
-    canva: {
-      design_brief: {
-        project: topic,
-        style: "Modern, minimal, educational, cinematic",
-        ratio: "16:9"
-      },
-      canva_ai_prompt: `Create a modern educational Canva presentation about "${topic}". Use clear visual hierarchy, clean sans-serif typography, simple icons, diagrams, minimal text, and calm professional design.`,
-      asset_list: ["title slide", "icons", "timeline", "diagram", "summary card", "CTA slide"]
-    }
-  });
+    return NextResponse.json({
+      ok: true,
+      role: "Canva as Design Agent",
+      canva,
+    });
+  } catch (error: any) {
+    return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+  }
 }

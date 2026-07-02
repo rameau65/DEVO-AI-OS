@@ -1,3 +1,3 @@
-# BRAND_ENGINE
+# EDUCATION_ENGINE
 
 Specialized DEVO-AI-OS engine module.

@@ -2,20 +2,23 @@
   "name": "devo-ai-os",
   "version": "1.0.0",
   "private": true,
+  "description": "DEVO-AI-OS: AI Creative Operating System for story, visual, video, music, education, Canva and GitHub workflows.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@octokit/rest": "latest",
     "next": "latest",
     "react": "latest",
     "react-dom": "latest"
   },
   "devDependencies": {
-    "typescript": "latest",
     "@types/node": "latest",
     "@types/react": "latest",
-    "@types/react-dom": "latest"
+    "@types/react-dom": "latest",
+    "typescript": "latest"
   }
 }

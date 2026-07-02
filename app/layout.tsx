@@ -1,16 +1,12 @@
 export const metadata = {
-  title: "DEVO-AI-OS",
+  title: "DEVO-AI-OS v1.0",
   description: "AI Creative Operating System"
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ko">
-      <body>{children}</body>
+      <body style={{ margin: 0 }}>{children}</body>
     </html>
   );
 }
