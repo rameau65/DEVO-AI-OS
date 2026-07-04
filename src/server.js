@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 
 import http from 'http';
-import { StdioClientTransport } from '@anthropic-ai/sdk/lib/resources/messages/streaming';
+import { orchestrateLLM } from './llm-orchestrator.js';
+import { providerStatus } from './llm-providers.js';
 
 class DEVOAIOSMCPServer {
   constructor() {
     this.name = 'DEVO-AI-OS MCP Server';
-    this.version = '2.0.0';
+    this.version = '3.0.0';
     this.mcpVersion = '2024-11-05';
     this.tools = this.initializeTools();
     this.resources = this.initializeResources();
@@ -51,8 +52,8 @@ class DEVOAIOSMCPServer {
           properties: {
             theme: { type: 'string', description: 'Video theme or narrative' },
             duration: { type: 'string', description: 'Video duration (1min, 3min, 5min, 10min)' },
-            style_preset: { 
-              type: 'string', 
+            style_preset: {
+              type: 'string',
               enum: ['MEDITATION_CINEMA', 'HANMAUM_DOCUMENTARY', 'AI_POETRY_FILM', 'YOUTUBE_SHORTS_CINEMA'],
               description: 'Predefined style preset'
             },
@@ -115,6 +116,20 @@ class DEVOAIOSMCPServer {
           },
           required: ['project_goal']
         }
+      },
+      {
+        name: 'llm_orchestrator',
+        description: 'Route requests across OpenAI, Grok, Claude, and Gemini with fallback or ensemble mode',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            prompt: { type: 'string', description: 'User request to route' },
+            provider: { type: 'string', enum: ['auto', 'openai', 'grok', 'claude', 'gemini'], description: 'Preferred provider or auto routing' },
+            mode: { type: 'string', enum: ['auto', 'ensemble'], description: 'Auto single-provider routing or multi-provider ensemble' },
+            providers: { type: 'array', items: { type: 'string', enum: ['openai', 'grok', 'claude', 'gemini'] }, description: 'Providers to use in ensemble mode' }
+          },
+          required: ['prompt']
+        }
       }
     ];
   }
@@ -126,11 +141,12 @@ class DEVOAIOSMCPServer {
       { name: 'templates', description: 'Reusable production templates', path: 'templates/' },
       { name: 'world_bible', description: 'Project world bibles and philosophy', path: 'world_bible/' },
       { name: 'core_principles', description: 'Core DEVO-AI-OS principles and standards', path: 'core/' },
-      { name: 'agents', description: 'Agent definitions and instructions', path: 'agents/' }
+      { name: 'agents', description: 'Agent definitions and instructions', path: 'agents/' },
+      { name: 'llm_providers', description: 'OpenAI, Grok, Claude, Gemini provider adapters', path: 'src/llm-providers.js' },
+      { name: 'llm_orchestrator', description: 'Multi LLM routing, fallback, and ensemble logic', path: 'src/llm-orchestrator.js' }
     ];
   }
 
-  // OpenAI Function definitions for ChatGPT integration
   getOpenAITools() {
     return this.tools.map(tool => ({
       type: 'function',
@@ -142,7 +158,6 @@ class DEVOAIOSMCPServer {
     }));
   }
 
-  // MCP Protocol compliant response
   getMCPToolResponse() {
     return {
       tools: this.tools.map(tool => ({
@@ -155,7 +170,7 @@ class DEVOAIOSMCPServer {
 
   async handleToolCall(toolName, toolInput) {
     console.log(`[Tool Call] ${toolName}`, toolInput);
-    
+
     switch (toolName) {
       case 'story_engine':
         return this.handleStoryEngine(toolInput);
@@ -171,6 +186,8 @@ class DEVOAIOSMCPServer {
         return this.handleQualityEngine(toolInput);
       case 'flow_engine':
         return this.handleFlowEngine(toolInput);
+      case 'llm_orchestrator':
+        return orchestrateLLM(toolInput);
       default:
         return { error: `Unknown tool: ${toolName}` };
     }
@@ -310,11 +327,26 @@ class DEVOAIOSMCPServer {
   }
 }
 
-// Create HTTP server
 const server = new DEVOAIOSMCPServer();
 
+function readJsonBody(req) {
+  return new Promise((resolve, reject) => {
+    let body = '';
+    req.on('data', chunk => {
+      body += chunk.toString();
+    });
+    req.on('end', () => {
+      try {
+        resolve(body ? JSON.parse(body) : {});
+      } catch (error) {
+        reject(error);
+      }
+    });
+    req.on('error', reject);
+  });
+}
+
 const requestListener = async (req, res) => {
-  // CORS headers
   res.setHeader('Content-Type', 'application/json');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -329,27 +361,28 @@ const requestListener = async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
   const pathname = url.pathname;
 
-  // Health check endpoint
   if (pathname === '/health' && req.method === 'GET') {
     res.writeHead(200);
     res.end(JSON.stringify({
+      ok: true,
       status: 'healthy',
       server: server.name,
       version: server.version,
       mcp_version: server.mcpVersion,
+      providers: providerStatus(),
       timestamp: new Date().toISOString()
     }));
     return;
   }
 
-  // Root endpoint
   if (pathname === '/' && req.method === 'GET') {
     res.writeHead(200);
     res.end(JSON.stringify({
       name: server.name,
       version: server.version,
       mcp_version: server.mcpVersion,
-      description: 'Model Context Protocol implementation for DEVO-AI-OS with OpenAI integration',
+      description: 'Multi LLM orchestration OS for DEVO-AI-OS with OpenAI, Grok, Claude, Gemini, MCP tools, and creative engines',
+      providers: providerStatus(),
       tools: server.getToolDefinitions().map(t => ({ name: t.name, description: t.description })),
       resources: server.getResourceDefinitions().map(r => ({ name: r.name, description: r.description })),
       endpoints: {
@@ -358,39 +391,39 @@ const requestListener = async (req, res) => {
         resources: '/resources',
         call: '/call',
         mcp: '/mcp',
-        openai: '/openai'
+        openai: '/openai',
+        openai_chat: '/openai/chat',
+        orchestrate: '/orchestrate',
+        providers: '/providers'
       }
     }));
     return;
   }
 
-  // List tools endpoint (MCP compliant)
+  if (pathname === '/providers' && req.method === 'GET') {
+    res.writeHead(200);
+    res.end(JSON.stringify({ providers: providerStatus() }));
+    return;
+  }
+
   if (pathname === '/tools' && req.method === 'GET') {
     res.writeHead(200);
     res.end(JSON.stringify(server.getMCPToolResponse()));
     return;
   }
 
-  // List resources endpoint
   if (pathname === '/resources' && req.method === 'GET') {
     res.writeHead(200);
-    res.end(JSON.stringify({
-      resources: server.getResourceDefinitions()
-    }));
+    res.end(JSON.stringify({ resources: server.getResourceDefinitions() }));
     return;
   }
 
-  // MCP Protocol endpoint (for Claude/MCP clients)
   if (pathname === '/mcp' && req.method === 'GET') {
     res.writeHead(200);
-    res.end(JSON.stringify({
-      type: 'tools/list',
-      ...server.getMCPToolResponse()
-    }));
+    res.end(JSON.stringify({ type: 'tools/list', ...server.getMCPToolResponse() }));
     return;
   }
 
-  // OpenAI Tools endpoint (for ChatGPT integration)
   if (pathname === '/openai' && req.method === 'GET') {
     res.writeHead(200);
     res.end(JSON.stringify({
@@ -400,70 +433,68 @@ const requestListener = async (req, res) => {
     return;
   }
 
-  // OpenAI ChatGPT endpoint
   if (pathname === '/openai/chat' && req.method === 'POST') {
-    let body = '';
-    req.on('data', chunk => {
-      body += chunk.toString();
-    });
-    req.on('end', async () => {
-      try {
-        const data = JSON.parse(body);
-        const { messages, model = 'gpt-4' } = data;
+    try {
+      const data = await readJsonBody(req);
+      const { messages, model = 'gpt-4.1-mini' } = data;
 
-        // Call OpenAI API with our tools
-        const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${server.openaiApiKey}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            model: model,
-            messages: messages,
-            tools: server.getOpenAITools(),
-            tool_choice: 'auto'
-          })
-        });
+      const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${server.openaiApiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model,
+          messages,
+          tools: server.getOpenAITools(),
+          tool_choice: 'auto'
+        })
+      });
 
-        if (!openaiResponse.ok) {
-          throw new Error(`OpenAI API error: ${openaiResponse.statusText}`);
-        }
-
-        const result = await openaiResponse.json();
-        res.writeHead(200);
-        res.end(JSON.stringify(result));
-      } catch (error) {
-        console.error('OpenAI Chat Error:', error);
-        res.writeHead(400);
-        res.end(JSON.stringify({ error: error.message }));
+      if (!openaiResponse.ok) {
+        throw new Error(`OpenAI API error: ${openaiResponse.statusText}`);
       }
-    });
+
+      const result = await openaiResponse.json();
+      res.writeHead(200);
+      res.end(JSON.stringify(result));
+    } catch (error) {
+      console.error('OpenAI Chat Error:', error);
+      res.writeHead(400);
+      res.end(JSON.stringify({ error: error.message }));
+    }
     return;
   }
 
-  // Tool call endpoint
+  if (pathname === '/orchestrate' && req.method === 'POST') {
+    try {
+      const data = await readJsonBody(req);
+      const result = await orchestrateLLM(data);
+      res.writeHead(result.ok ? 200 : 500);
+      res.end(JSON.stringify(result));
+    } catch (error) {
+      console.error('Orchestration Error:', error);
+      res.writeHead(400);
+      res.end(JSON.stringify({ ok: false, error: error.message }));
+    }
+    return;
+  }
+
   if (pathname === '/call' && req.method === 'POST') {
-    let body = '';
-    req.on('data', chunk => {
-      body += chunk.toString();
-    });
-    req.on('end', async () => {
-      try {
-        const data = JSON.parse(body);
-        const { tool, input } = data;
-        const result = await server.handleToolCall(tool, input);
-        res.writeHead(200);
-        res.end(JSON.stringify(result));
-      } catch (error) {
-        res.writeHead(400);
-        res.end(JSON.stringify({ error: error.message }));
-      }
-    });
+    try {
+      const data = await readJsonBody(req);
+      const { tool, input } = data;
+      const result = await server.handleToolCall(tool, input || {});
+      res.writeHead(200);
+      res.end(JSON.stringify(result));
+    } catch (error) {
+      res.writeHead(400);
+      res.end(JSON.stringify({ error: error.message }));
+    }
     return;
   }
 
-  // 404
   res.writeHead(404);
   res.end(JSON.stringify({ error: 'Not found' }));
 };
@@ -479,21 +510,22 @@ httpServer.listen(server.port, () => {
   console.log(`\n📋 Available Endpoints:`);
   console.log(`  GET  / - Server info & endpoints`);
   console.log(`  GET  /health - Health check`);
+  console.log(`  GET  /providers - Provider status`);
   console.log(`  GET  /tools - List all tools (MCP format)`);
   console.log(`  GET  /resources - List all resources`);
   console.log(`  GET  /mcp - MCP protocol endpoint`);
   console.log(`  GET  /openai - OpenAI tools format`);
   console.log(`  POST /call - Call a tool directly`);
-  console.log(`  POST /openai/chat - ChatGPT integration\n`);
+  console.log(`  POST /openai/chat - ChatGPT integration`);
+  console.log(`  POST /orchestrate - Multi LLM orchestration\n`);
   console.log(`🔧 Available Tools (${server.tools.length}):`);
   server.getToolDefinitions().forEach(tool => {
     console.log(`  ✓ ${tool.name}: ${tool.description}`);
   });
-  console.log(`\n📦 Available Resources (${server.resources.length}):`);
-  server.getResourceDefinitions().forEach(resource => {
-    console.log(`  ✓ ${resource.name}: ${resource.description}`);
+  console.log(`\n🤖 LLM Providers:`);
+  providerStatus().forEach(provider => {
+    console.log(`  ${provider.configured ? '✅' : '⚠️ '} ${provider.name}: ${provider.model}`);
   });
-  console.log(`\n🔐 OpenAI Integration: ${server.openaiApiKey ? '✅ Enabled' : '⚠️  Disabled (set OPENAI_API_KEY)'}`);
   console.log(`\n${'='.repeat(60)}\n`);
 });
 
