@@ -119,14 +119,16 @@ class DEVOAIOSMCPServer {
       },
       {
         name: 'llm_orchestrator',
-        description: 'Route requests across OpenAI, Grok, Claude, and Gemini with fallback or ensemble mode',
+        description: 'Token-efficient router for OpenAI, Grok, Claude, and Gemini. Uses one model by default and activates turbo support only when needed.',
         inputSchema: {
           type: 'object',
           properties: {
             prompt: { type: 'string', description: 'User request to route' },
             provider: { type: 'string', enum: ['auto', 'openai', 'grok', 'claude', 'gemini'], description: 'Preferred provider or auto routing' },
-            mode: { type: 'string', enum: ['auto', 'ensemble'], description: 'Auto single-provider routing or multi-provider ensemble' },
-            providers: { type: 'array', items: { type: 'string', enum: ['openai', 'grok', 'claude', 'gemini'] }, description: 'Providers to use in ensemble mode' }
+            budget: { type: 'string', enum: ['low', 'normal', 'turbo', 'critical'], description: 'Cost and token policy. Default normal uses one provider.' },
+            turbo: { type: 'boolean', description: 'When true, allow one or more specialist review providers.' },
+            maxProviders: { type: 'number', description: 'Maximum providers allowed for this request.' },
+            providers: { type: 'array', items: { type: 'string', enum: ['openai', 'grok', 'claude', 'gemini'] }, description: 'Optional turbo review providers' }
           },
           required: ['prompt']
         }
@@ -143,7 +145,7 @@ class DEVOAIOSMCPServer {
       { name: 'core_principles', description: 'Core DEVO-AI-OS principles and standards', path: 'core/' },
       { name: 'agents', description: 'Agent definitions and instructions', path: 'agents/' },
       { name: 'llm_providers', description: 'OpenAI, Grok, Claude, Gemini provider adapters', path: 'src/llm-providers.js' },
-      { name: 'llm_orchestrator', description: 'Multi LLM routing, fallback, and ensemble logic', path: 'src/llm-orchestrator.js' }
+      { name: 'llm_orchestrator', description: 'Token-efficient multi LLM routing with turbo-on-demand policy', path: 'src/llm-orchestrator.js' }
     ];
   }
 
@@ -381,7 +383,7 @@ const requestListener = async (req, res) => {
       name: server.name,
       version: server.version,
       mcp_version: server.mcpVersion,
-      description: 'Multi LLM orchestration OS for DEVO-AI-OS with OpenAI, Grok, Claude, Gemini, MCP tools, and creative engines',
+      description: 'Turbo-on-demand multi LLM OS for DEVO-AI-OS. Uses one model by default and activates specialist providers only when useful.',
       providers: providerStatus(),
       tools: server.getToolDefinitions().map(t => ({ name: t.name, description: t.description })),
       resources: server.getResourceDefinitions().map(r => ({ name: r.name, description: r.description })),
@@ -517,7 +519,7 @@ httpServer.listen(server.port, () => {
   console.log(`  GET  /openai - OpenAI tools format`);
   console.log(`  POST /call - Call a tool directly`);
   console.log(`  POST /openai/chat - ChatGPT integration`);
-  console.log(`  POST /orchestrate - Multi LLM orchestration\n`);
+  console.log(`  POST /orchestrate - Turbo-on-demand multi LLM orchestration\n`);
   console.log(`🔧 Available Tools (${server.tools.length}):`);
   server.getToolDefinitions().forEach(tool => {
     console.log(`  ✓ ${tool.name}: ${tool.description}`);
